@@ -12,6 +12,8 @@ export default function MainApp() {
       <Drawer.Navigator initialRouteName="Inicio">
         <Drawer.Screen name="Inicio" component={HomeScreen} />
         <Drawer.Screen name="Clima" component={ClimaScreen} />
+        <Drawer.Screen name="Profile" component={ProfileScreen}/>
+        <Drawer.Screen name="Deportes" component={DeportesScreen}/>
       </Drawer.Navigator>
     </NavigationContainer>
   );

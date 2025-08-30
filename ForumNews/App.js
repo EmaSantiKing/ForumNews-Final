@@ -3,7 +3,9 @@ import { View, Text, Image, Pressable } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import ClimaScreen from './ClimaScreen';
-import DolarScreen from './DolarScreen';
+import DolarScreen from './DolarScreen'
+import ProfileScreen from './ProfileScreen';
+import DeportesScreen from './DeportesScreen';
 
 function HomeScreen() {
   return (
@@ -29,7 +31,7 @@ function HomeScreen() {
   );
 }
 
-function ProfileScreen() {
+function Profile() {
   return (
     <View style={styles.container}>
       <Text style={styles.text}>Esta es la pantalla de Perfil</Text>
@@ -106,7 +108,7 @@ export default function App() {
         <Drawer.Screen name="Perfil" component={ProfileScreen} />
         <Drawer.Screen name="Clima" component={ClimaScreen} />
         <Drawer.Screen name="Noticias" component={Noticias} />
-        <Drawer.Screen name="Deportes" component={Deportes} />
+        <Drawer.Screen name="Deportes" component={DeportesScreen} />
         <Drawer.Screen name="Dolar" component={DolarScreen} />
         <Drawer.Screen name="Entretenimiento" component={Entretenimiento} />
       </Drawer.Navigator>
