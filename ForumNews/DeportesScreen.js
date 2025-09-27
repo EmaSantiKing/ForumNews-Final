@@ -1,118 +1,181 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, Image } from 'react-native';
+// DeportesScreen.js
+import React, { useEffect, useState } from "react";
+import { View, Text, FlatList, Image, ActivityIndicator, StyleSheet, ScrollView } from "react-native";
 
-// 🔹 Datos mock para mostrar partidos
-const mockMatches = [
-  {
-    fixture: { id: 1, status: { short: 'FT', long: 'Finished' } },
-    league: { name: 'Serie A' },
-    teams: {
-      home: { name: 'AC Milan', logo: 'https://upload.wikimedia.org/wikipedia/en/0/0c/AC_Milan_crest.svg' },
-      away: { name: 'Lecce', logo: 'https://upload.wikimedia.org/wikipedia/en/1/1d/US_Lecce_logo.svg' },
-    },
-    goals: { home: 2, away: 0 },
-  },
-  {
-    fixture: { id: 2, status: { short: 'FT', long: 'Finished' } },
-    league: { name: 'Serie A' },
-    teams: {
-      home: { name: 'Cremonense', logo: 'https://upload.wikimedia.org/wikipedia/en/2/2e/US_Cremonese_logo.svg' },
-      away: { name: 'Sassuolo', logo: 'https://upload.wikimedia.org/wikipedia/en/3/3e/U.S._Sassuolo_Calcio_logo.svg' },
-    },
-    goals: { home: 3, away: 2 },
-  },
-];
+const API_KEY = "60b395e90b284f59b74515c4b6c39023";
+const BASE_URL = "https://api.football-data.org/v4";
+
+// Solo las 5 grandes ligas
+const COMPETITIONS = ["PL", "PD", "SA", "FL1", "BL1"];
+
+const competitionNames = {
+  PL: "Premier League",
+  PD: "LaLiga",
+  SA: "Serie A",
+  FL1: "Ligue 1",
+  BL1: "Bundesliga",
+};
+
+const formatToArgentinaTime = (utcDate) => {
+  return new Date(utcDate).toLocaleTimeString("es-AR", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
 
 export default function DeportesScreen() {
-  const [liveMatches, setLiveMatches] = useState([]);
-  const [upcomingMatches, setUpcomingMatches] = useState([]);
-  const [finishedMatches, setFinishedMatches] = useState([]);
+  const [matchesYesterday, setMatchesYesterday] = useState([]);
+  const [matchesToday, setMatchesToday] = useState([]);
+  const [matchesTomorrow, setMatchesTomorrow] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchMatches = async (date, setter) => {
+    try {
+      let allMatches = [];
+      for (let comp of COMPETITIONS) {
+        const dateStr = date.toISOString().split("T")[0];
+        const response = await fetch(
+          `${BASE_URL}/competitions/${comp}/matches?dateFrom=${dateStr}&dateTo=${dateStr}`,
+          { headers: { "X-Auth-Token": API_KEY } }
+        );
+        const data = await response.json();
+        if (data.matches) {
+          allMatches = [
+            ...allMatches,
+            ...data.matches.map((m) => ({
+              ...m,
+              competitionName: competitionNames[comp] || m.competition.name,
+              competitionLogo: m.competition.emblem,
+              matchDate: dateStr,
+            })),
+          ];
+        }
+      }
+      allMatches.sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate));
+      setter(allMatches);
+    } catch (error) {
+      console.error("Error al traer partidos:", error);
+    }
+  };
+
   useEffect(() => {
-    // 🔹 Cargar los datos mock
-    setLiveMatches([]); // no hay partidos en vivo
-    setUpcomingMatches([]); // no hay próximos partidos
-    setFinishedMatches(mockMatches); // partidos finalizados
-    setLoading(false);
+    const today = new Date();
+    const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+
+    Promise.all([
+      fetchMatches(yesterday, setMatchesYesterday),
+      fetchMatches(today, setMatchesToday),
+      fetchMatches(tomorrow, setMatchesTomorrow),
+    ]).finally(() => setLoading(false));
   }, []);
+
+  const renderMatch = ({ item }) => {
+    const isFinished = item.status === "FINISHED";
+    return (
+      <View style={styles.card}>
+        <View style={styles.headerRow}>
+          {item.competitionLogo ? (
+            <Image source={{ uri: item.competitionLogo }} style={styles.compLogo} />
+          ) : null}
+          <Text style={styles.league}>{item.competitionName}</Text>
+        </View>
+
+        <View style={styles.teamRow}>
+          <Image source={{ uri: item.homeTeam.crest }} style={styles.crest} />
+          <Text style={styles.team}>{item.homeTeam.name}</Text>
+          <Text style={styles.score}>
+            {item.score.fullTime.home !== null ? item.score.fullTime.home : "-"}
+          </Text>
+        </View>
+
+        <View style={styles.teamRow}>
+          <Image source={{ uri: item.awayTeam.crest }} style={styles.crest} />
+          <Text style={styles.team}>{item.awayTeam.name}</Text>
+          <Text style={styles.score}>
+            {item.score.fullTime.away !== null ? item.score.fullTime.away : "-"}
+          </Text>
+        </View>
+
+        <Text style={styles.date}>{formatToArgentinaTime(item.utcDate)}</Text>
+        {isFinished && <Text style={styles.finalizado}>Finalizado</Text>}
+      </View>
+    );
+  };
 
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#28a745" />
+        <ActivityIndicator size="large" color="#1E90FF" />
         <Text>Cargando partidos...</Text>
       </View>
     );
   }
 
-  const renderMatch = ({ item }) => (
-    <View style={styles.matchCard}>
-      <Text style={styles.league}>{item.league.name}</Text>
-      <View style={styles.teams}>
-        <Image source={{ uri: item.teams.home.logo }} style={styles.logo} />
-        <Text style={styles.team}>{item.teams.home.name}</Text>
-        <Text style={styles.score}>
-          {item.goals.home} - {item.goals.away}
-        </Text>
-        <Text style={styles.team}>{item.teams.away.name}</Text>
-        <Image source={{ uri: item.teams.away.logo }} style={styles.logo} />
-      </View>
-    </View>
-  );
-
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>⚽ Partidos en Vivo</Text>
-      {liveMatches.length > 0 ? (
+    <ScrollView style={styles.container}>
+      <Text style={styles.sectionHeader}>📅 Partidos de Ayer</Text>
+      {matchesYesterday.length > 0 ? (
         <FlatList
-          data={liveMatches}
-          keyExtractor={(item) => item.fixture.id.toString()}
+          data={matchesYesterday}
+          keyExtractor={(item) => item.id.toString()}
           renderItem={renderMatch}
+          scrollEnabled={false}
         />
       ) : (
-        <Text>No hay partidos en vivo</Text>
+        <Text style={styles.empty}>No hubo partidos ayer</Text>
       )}
 
-      <Text style={styles.header}>📅 Próximos Partidos de Hoy</Text>
-      {upcomingMatches.length > 0 ? (
+      <Text style={styles.sectionHeader}>⚽ Partidos de Hoy</Text>
+      {matchesToday.length > 0 ? (
         <FlatList
-          data={upcomingMatches}
-          keyExtractor={(item) => item.fixture.id.toString()}
+          data={matchesToday}
+          keyExtractor={(item) => item.id.toString()}
           renderItem={renderMatch}
+          scrollEnabled={false}
         />
       ) : (
-        <Text>No hay partidos programados</Text>
+        <Text style={styles.empty}>No hay partidos hoy</Text>
       )}
 
-      <Text style={styles.header}>✅ Partidos Finalizados Hoy</Text>
-      {finishedMatches.length > 0 ? (
+      <Text style={styles.sectionHeader}>🔮 Partidos de Mañana</Text>
+      {matchesTomorrow.length > 0 ? (
         <FlatList
-          data={finishedMatches}
-          keyExtractor={(item) => item.fixture.id.toString()}
+          data={matchesTomorrow}
+          keyExtractor={(item) => item.id.toString()}
           renderItem={renderMatch}
+          scrollEnabled={false}
         />
       ) : (
-        <Text>No hay partidos finalizados</Text>
+        <Text style={styles.empty}>No hay partidos mañana</Text>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 10, backgroundColor: '#fff' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { fontSize: 20, fontWeight: 'bold', marginVertical: 10 },
-  matchCard: {
-    backgroundColor: '#f8f9fa',
-    padding: 10,
-    marginVertical: 5,
-    borderRadius: 8,
-    elevation: 2
+  container: { flex: 1, backgroundColor: "#f4f4f4" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  sectionHeader: { fontSize: 20, fontWeight: "bold", margin: 10 },
+  card: {
+    backgroundColor: "#fff",
+    margin: 10,
+    padding: 15,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 3,
   },
-  league: { fontSize: 14, fontWeight: 'bold', marginBottom: 5, textAlign: 'center' },
-  teams: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  team: { fontSize: 14, width: 80, textAlign: 'center' },
-  score: { fontSize: 18, fontWeight: 'bold' },
-  logo: { width: 30, height: 30 }
+  headerRow: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
+  compLogo: { width: 25, height: 25, marginRight: 8 },
+  league: { fontSize: 16, fontWeight: "bold", color: "#1E90FF" },
+  teamRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 },
+  crest: { width: 28, height: 28, marginRight: 10 },
+  team: { flex: 1, fontSize: 15 },
+  score: { fontSize: 16, fontWeight: "bold", minWidth: 50, textAlign: "center" },
+  date: { textAlign: "center", marginTop: 5, color: "gray" },
+  finalizado: { textAlign: "center", color: "red", marginTop: 2, fontWeight: "bold" },
+  empty: { textAlign: "center", color: "gray", marginBottom: 10 },
 });
