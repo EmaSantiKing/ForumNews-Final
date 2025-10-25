@@ -7,6 +7,7 @@ import DolarScreen from './DolarScreen';
 import ProfileScreen from './ProfileScreen';
 import DeportesScreen from './DeportesScreen';
 import NoticiasScreen from './NoticiasScreen';
+import EntretenimientoScreen from './EntretenimientoScreen';
 
 function HomeScreen() {
   return (
@@ -71,7 +72,7 @@ export default function App() {
         <Drawer.Screen name="Noticias" component={NoticiasScreen} />
         <Drawer.Screen name="Deportes" component={DeportesScreen} />
         <Drawer.Screen name="Dolar" component={DolarScreen} />
-        <Drawer.Screen name="Entretenimiento" component={Entretenimiento} />
+        <Drawer.Screen name="Entretenimiento" component={EntretenimientoScreen} />
       </Drawer.Navigator>
     </NavigationContainer>
   );
